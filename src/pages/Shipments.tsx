@@ -124,7 +124,7 @@ export function Shipments() {
             <Send className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{shipments.filter(s => s.date === new Date().toISOString().split('T')[0] && (s.status === 'DELIVERED' || s.status === 'SHIPPED')).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -133,7 +133,7 @@ export function Shipments() {
             <PackageCheck className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
+            <div className="text-2xl font-bold">{shipments.filter(s => s.status === 'PREPARING').length}</div>
           </CardContent>
         </Card>
       </div>

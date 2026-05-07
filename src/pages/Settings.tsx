@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell, User, Lock, Building, Truck, Globe, MapPin } from "lucide-react";
+import { Bell, User, Lock, Building, Truck, Globe, MapPin, CheckCircle2 } from "lucide-react";
 import { useTheme } from "../components/ThemeProvider";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export function Settings() {
   const { theme, setTheme } = useTheme();
+  const [savedSection, setSavedSection] = useState<string | null>(null);
   const [settings, setSettings] = useState({
     companyName: "Tecgas GLP Solutions",
     cnpj: "00.000.000/0001-00",
@@ -36,7 +37,8 @@ export function Settings() {
   const handleSave = async (section: string) => {
     try {
       await setDoc(doc(db, "settings", "default"), settings);
-      alert(`${section} salvas com sucesso!`);
+      setSavedSection(section);
+      setTimeout(() => setSavedSection(null), 2500);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "settings/default");
     }
@@ -77,8 +79,13 @@ export function Settings() {
                 <input type="tel" className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" value={settings.phone} onChange={e => setSettings({...settings, phone: e.target.value})} />
               </div>
             </div>
-            <div className="pt-2">
-              <Button onClick={() => handleSave('Informações da empresa')}>Salvar Informações</Button>
+            <div className="pt-2 flex items-center gap-3">
+              <Button onClick={() => handleSave('empresa')}>Salvar Informações</Button>
+              {savedSection === 'empresa' && (
+                <span className="flex items-center gap-1 text-sm text-emerald-600 animate-in fade-in">
+                  <CheckCircle2 className="h-4 w-4" /> Salvo!
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -165,8 +172,13 @@ export function Settings() {
                 <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))]" checked={settings.dailyEmail} onChange={e => setSettings({...settings, dailyEmail: e.target.checked})} />
               </div>
             </div>
-            <div className="pt-2">
-              <Button onClick={() => handleSave('Preferências de notificação')}>Atualizar Preferências</Button>
+            <div className="pt-2 flex items-center gap-3">
+              <Button onClick={() => handleSave('notificacoes')}>Atualizar Preferências</Button>
+              {savedSection === 'notificacoes' && (
+                <span className="flex items-center gap-1 text-sm text-emerald-600 animate-in fade-in">
+                  <CheckCircle2 className="h-4 w-4" /> Salvo!
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>

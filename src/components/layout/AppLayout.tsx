@@ -1,15 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, HardHat } from "lucide-react";
+import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, HardHat, LogOut } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { TecgasLogo } from "../TecgasLogo";
+import { auth } from "../../lib/firebase";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, setUser);
+    return unsub;
+  }, []);
+
+  // Iniciais do nome do usuário (até 2 letras)
+  const userInitials = user?.displayName
+    ? user.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'US';
+
+  const handleSignOut = () => signOut(auth);
 
   const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -72,17 +87,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         
         <div className={cn("p-4 border-t border-[hsl(var(--border))] flex items-center", isCollapsed && !isMobileOpen ? "justify-center px-2 flex-col space-y-4" : "justify-between")}>
-          <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3")}>
+          <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3 flex-1 min-w-0")}>
             <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
-              AD
+              {userInitials}
             </div>
             {(!isCollapsed || isMobileOpen) && (
-              <div className="flex flex-col truncate">
-                <span className="text-sm font-medium leading-none truncate">Admin</span>
-                <span className="text-xs text-[hsl(var(--muted-foreground))] mt-1 truncate">admin@tecgas.com.br</span>
+              <div className="flex flex-col truncate flex-1 min-w-0">
+                <span className="text-sm font-medium leading-none truncate">{user?.displayName || 'Usuário'}</span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))] mt-1 truncate">{user?.email || ''}</span>
               </div>
             )}
           </div>
+          {(!isCollapsed || isMobileOpen) && (
+            <button
+              onClick={handleSignOut}
+              title="Sair"
+              className="ml-2 p-1.5 rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-destructive transition-colors flex-shrink-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Desktop Collapse Toggle */}

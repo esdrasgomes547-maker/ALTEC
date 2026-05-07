@@ -1,10 +1,28 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+
+// Carrega config do Firebase via variáveis de ambiente (produção)
+// ou do JSON local (dev) — nunca suba o JSON no git!
+let jsonConfig: Record<string, string> = {};
+try {
+  const mod = await import('../../firebase-applet-config.json');
+  jsonConfig = mod.default;
+} catch { /* arquivo não existe em produção, tudo certo */ }
+
+const firebaseConfig = {
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || jsonConfig.apiKey,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || jsonConfig.authDomain,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || jsonConfig.projectId,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || jsonConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID|| jsonConfig.messagingSenderId,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID             || jsonConfig.appId,
+};
+const firestoreDatabaseId: string =
+  import.meta.env.VITE_FIREBASE_DATABASE_ID || jsonConfig.firestoreDatabaseId || '(default)';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); 
+export const db = getFirestore(app, firestoreDatabaseId);
 export const auth = getAuth(app);
 
 // Simple anonymous login to satisfy "isSignedIn()" rules easily, since the user didn't request a full auth UI but rules need auth

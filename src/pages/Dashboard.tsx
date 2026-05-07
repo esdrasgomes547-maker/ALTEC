@@ -6,6 +6,19 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
 
+// Calcula variação percentual entre dois valores
+function calcPct(current: number, previous: number): { value: string; up: boolean } {
+  if (previous === 0) return { value: current > 0 ? '+∞' : '0%', up: current >= 0 };
+  const pct = ((current - previous) / previous) * 100;
+  return { value: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`, up: pct >= 0 };
+}
+
+// Retorna o mês-ano de uma string ISO ou date
+function monthKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function Dashboard() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
@@ -47,11 +60,31 @@ export function Dashboard() {
     }
   }, []);
 
+  const now = new Date();
+  const currKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
   const alerts = inventory.filter(item => item.status === 'WARNING' || item.status === 'CRITICAL' || item.status === 'OUT_OF_STOCK');
 
-  const shippedCount = shipments.filter(s => s.status === 'DELIVERED' || s.status === 'SHIPPED').length;
-  const inTransitCount = shipments.filter(s => s.status === 'PREPARING' || s.status === 'PENDING').length;
-  const totalVolume = inventory.reduce((acc, item) => acc + item.qty, 0);
+  // Enviados/entregues: total e comparação mensal
+  const shippedAll   = shipments.filter(s => s.status === 'DELIVERED' || s.status === 'SHIPPED');
+  const shippedCurr  = shippedAll.filter(s => s.date && monthKey(s.date) === currKey).length;
+  const shippedPrev  = shippedAll.filter(s => s.date && monthKey(s.date) === prevKey).length;
+  const shippedCount = shippedAll.length;
+  const shippedPct   = calcPct(shippedCurr, shippedPrev);
+
+  // Em trânsito: total e comparação mensal
+  const inTransitAll  = shipments.filter(s => s.status === 'PREPARING' || s.status === 'PENDING');
+  const inTransitCurr = inTransitAll.filter(s => s.date && monthKey(s.date) === currKey).length;
+  const inTransitPrev = inTransitAll.filter(s => s.date && monthKey(s.date) === prevKey).length;
+  const inTransitCount = inTransitAll.length;
+  const inTransitPct  = calcPct(inTransitCurr, inTransitPrev);
+
+  // Volume: total e variação simples (atual vs. metade — sem histórico não temos mais granular)
+  const totalVolume = inventory.reduce((acc, item) => acc + (item.qty || 0), 0);
+  const totalMin    = inventory.reduce((acc, item) => acc + (item.minQty || 0), 0);
+  const volumePct   = calcPct(totalVolume, totalMin);
 
   return (
     <div className="space-y-6">
@@ -86,10 +119,10 @@ export function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold font-mono">{shippedCount}</div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] flex items-center mt-1">
-                <span className="text-emerald-500 flex items-center mr-1">
-                  <ArrowUpRight className="h-3 w-3" />
-                  +12.5%
-                </span> 
+                <span className={`flex items-center mr-1 ${shippedPct.up ? 'text-emerald-500' : 'text-destructive'}`}>
+                  {shippedPct.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                  {shippedPct.value}
+                </span>
                 vs. mês anterior
               </p>
             </CardContent>
@@ -105,10 +138,10 @@ export function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold font-mono">{inTransitCount}</div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] flex items-center mt-1">
-                <span className="text-destructive flex items-center mr-1">
-                  <ArrowDownRight className="h-3 w-3" />
-                  -4.1%
-                </span> 
+                <span className={`flex items-center mr-1 ${inTransitPct.up ? 'text-emerald-500' : 'text-destructive'}`}>
+                  {inTransitPct.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                  {inTransitPct.value}
+                </span>
                 vs. mês anterior
               </p>
             </CardContent>
@@ -126,11 +159,11 @@ export function Dashboard() {
                 {totalVolume.toLocaleString()}
               </div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] flex items-center mt-1">
-                <span className="text-emerald-500 flex items-center mr-1">
-                  <ArrowUpRight className="h-3 w-3" />
-                  +2.1%
-                </span> 
-                vs. mês anterior
+                <span className={`flex items-center mr-1 ${volumePct.up ? 'text-emerald-500' : 'text-destructive'}`}>
+                  {volumePct.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                  {volumePct.value}
+                </span>
+                vs. estoque mínimo total
               </p>
             </CardContent>
           </Card>

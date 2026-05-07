@@ -138,7 +138,7 @@ export function Employees() {
         <CardContent className="p-4 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredData.map(emp => (
-              <Card key={emp.id} className="cursor-pointer hover:border-[hsl(var(--primary))]/50 transition-colors shadow-sm" onClick={() => setSelectedEmployee(emp)}>
+              <Card key={emp.id} className="relative cursor-pointer hover:border-[hsl(var(--primary))]/50 transition-colors shadow-sm" onClick={() => setSelectedEmployee(emp)}>
                 <CardContent className="p-5 flex flex-col items-center text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] flex items-center justify-center text-xl font-bold border border-[hsl(var(--primary))]/20">
                     {emp.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
