@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,10 +7,12 @@ import { Search, Plus, Filter, Download, ArrowUpRight, ArrowDownRight, PackageCh
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { sendWhatsAppNotification, sendEmailReport, generateShipmentsReport } from "../lib/notificationService";
+import { useOrganization } from "../lib/tenant";
 
 const initialShipments: any[] = [];
 
 export function Shipments() {
+  const { orgId } = useOrganization();
   const [searchTerm, setSearchTerm] = useState("");
   const [shipments, setShipments] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -18,20 +20,32 @@ export function Shipments() {
   const [newShipmentForm, setNewShipmentForm] = useState({ destination: "", items: 1, driver: "", vehicle: "", status: "PENDING" });
 
   useEffect(() => {
-    const q = query(collection(db, "shipments"));
+    if (!orgId) return;
+    const q = query(collection(db, `organizations/${orgId}/shipments`));
     const unsub = onSnapshot(q, (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setShipments(items);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, "shipments");
+      handleFirestoreError(error, OperationType.LIST, `organizations/${orgId}/shipments`);
     });
     return () => unsub();
-  }, []);
+  }, [orgId]);
 
-  const filteredData = shipments.filter(item => 
-    item.destination.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = React.useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return shipments.filter(item => 
+      item.destination.toLowerCase().includes(term) || 
+      item.id.toLowerCase().includes(term)
+    );
+  }, [shipments, searchTerm]);
+
+  const { entregasHoje, emPreparacao } = React.useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return {
+      entregasHoje: shipments.filter(s => s.status === 'DELIVERED' && s.date === todayStr).length,
+      emPreparacao: shipments.filter(s => s.status === 'PREPARING').length
+    };
+  }, [shipments]);
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
@@ -46,6 +60,7 @@ export function Shipments() {
   };
 
   const handleSaveShipment = async () => {
+    if (!orgId) return;
     const newShipment = {
       ...newShipmentForm,
       date: new Date().toISOString().split('T')[0], // we might want to preserve the old date if editing, but for simplicity let's keep it or just don't overwrite if edit
@@ -55,25 +70,26 @@ export function Shipments() {
       if (editingId) {
         // preserve the original date if editing
         const existing = shipments.find(s => s.id === editingId);
-        await setDoc(doc(db, "shipments", editingId), { ...newShipment, date: existing?.date || newShipment.date }, { merge: true });
+        await setDoc(doc(db, `organizations/${orgId}/shipments`, editingId), { ...newShipment, date: existing?.date || newShipment.date }, { merge: true });
       } else {
         const newId = `EXP-${String(Math.floor(Math.random() * 10000) + 23400)}`;
-        await setDoc(doc(db, "shipments", newId), newShipment);
+        await setDoc(doc(db, `organizations/${orgId}/shipments`, newId), newShipment);
       }
       setIsAddModalOpen(false);
       setEditingId(null);
       setNewShipmentForm({ destination: "", items: 1, driver: "", vehicle: "", status: "PENDING" });
     } catch (error) {
-      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, `shipments/${editingId || 'new'}`);
+      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, `organizations/${orgId}/shipments/${editingId || 'new'}`);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if(confirm("Deseja apagar esta expedição?")) {
+    if(!orgId) return;
+    if(window.confirm("Deseja apagar esta expedição?")) {
       try {
-        await deleteDoc(doc(db, "shipments", id));
+        await deleteDoc(doc(db, `organizations/${orgId}/shipments`, id));
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `shipments/${id}`);
+        handleFirestoreError(error, OperationType.DELETE, `organizations/${orgId}/shipments/${id}`);
       }
     }
   };
@@ -124,7 +140,7 @@ export function Shipments() {
             <Send className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{shipments.filter(s => s.date === new Date().toISOString().split('T')[0] && (s.status === 'DELIVERED' || s.status === 'SHIPPED')).length}</div>
+            <div className="text-2xl font-bold">{entregasHoje}</div>
           </CardContent>
         </Card>
         <Card>
@@ -133,7 +149,7 @@ export function Shipments() {
             <PackageCheck className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{shipments.filter(s => s.status === 'PREPARING').length}</div>
+            <div className="text-2xl font-bold">{emPreparacao}</div>
           </CardContent>
         </Card>
       </div>

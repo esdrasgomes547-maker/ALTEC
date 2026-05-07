@@ -1,39 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, HardHat, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, LogOut } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { TecgasLogo } from "../TecgasLogo";
-import { auth } from "../../lib/firebase";
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const [user, setUser] = useState<User | null>(auth.currentUser);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, setUser);
-    return unsub;
-  }, []);
-
-  // Iniciais do nome do usuário (até 2 letras)
-  const userInitials = user?.displayName
-    ? user.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-    : 'US';
-
-  const handleSignOut = () => signOut(auth);
+  const user = auth.currentUser;
+  const displayName = user?.displayName || user?.email?.split('@')[0] || "Usuário";
+  const initials = displayName.substring(0, 2).toUpperCase();
 
   const navItems = [
-    { name: "Dashboard", path: "/", icon: LayoutDashboard },
-    { name: "Estoque", path: "/inventory", icon: Package },
-    { name: "Expedição", path: "/shipments", icon: Truck },
-    { name: "Fornecedores", path: "/suppliers", icon: Users },
-    { name: "Funcionários", path: "/employees", icon: HardHat },
-    { name: "Configurações", path: "/settings", icon: Settings },
+    { name: "Dashboard", path: "/app/dashboard", icon: LayoutDashboard },
+    { name: "Estoque", path: "/app/inventory", icon: Package },
+    { name: "Expedição", path: "/app/shipments", icon: Truck },
+    { name: "Fornecedores", path: "/app/suppliers", icon: Users },
+    { name: "Configurações", path: "/app/settings", icon: Settings },
   ];
+
+  const handleLogout = () => {
+    signOut(auth).catch(console.error);
+  };
 
   return (
     <div className="flex h-screen bg-[hsl(var(--background))] overflow-hidden">
@@ -86,25 +80,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </div>
         
-        <div className={cn("p-4 border-t border-[hsl(var(--border))] flex items-center", isCollapsed && !isMobileOpen ? "justify-center px-2 flex-col space-y-4" : "justify-between")}>
-          <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3 flex-1 min-w-0")}>
+        <div className={cn("p-4 border-t border-[hsl(var(--border))] flex items-center group", isCollapsed && !isMobileOpen ? "justify-center px-2 flex-col space-y-4" : "justify-between")}>
+          <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3")}>
             <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
-              {userInitials}
+              {initials}
             </div>
             {(!isCollapsed || isMobileOpen) && (
-              <div className="flex flex-col truncate flex-1 min-w-0">
-                <span className="text-sm font-medium leading-none truncate">{user?.displayName || 'Usuário'}</span>
-                <span className="text-xs text-[hsl(var(--muted-foreground))] mt-1 truncate">{user?.email || ''}</span>
+              <div className="flex flex-col truncate">
+                <span className="text-sm font-medium leading-none truncate">{displayName}</span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))] mt-1 truncate">{user?.email || "No Email"}</span>
               </div>
             )}
           </div>
           {(!isCollapsed || isMobileOpen) && (
-            <button
-              onClick={handleSignOut}
-              title="Sair"
-              className="ml-2 p-1.5 rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-destructive transition-colors flex-shrink-0"
-            >
-              <LogOut className="h-4 w-4" />
+            <button title="Sair" onClick={handleLogout} className="text-[hsl(var(--muted-foreground))] hover:text-destructive transition-colors shrink-0">
+               <LogOut className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -168,10 +158,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(var(--card))] border-t border-[hsl(var(--border))] z-40 px-2 pb-safe">
           <div className="flex items-center justify-between h-16">
             {[
-              { name: "Dashboard", path: "/", icon: LayoutDashboard },
-              { name: "Estoque", path: "/inventory", icon: Package },
-              { name: "Expedição", path: "/shipments", icon: Truck },
-              { name: "Equipe", path: "/employees", icon: HardHat },
+              { name: "Dashboard", path: "/app/dashboard", icon: LayoutDashboard },
+              { name: "Estoque", path: "/app/inventory", icon: Package },
+              { name: "Expedição", path: "/app/shipments", icon: Truck },
+              { name: "Fornecedores", path: "/app/suppliers", icon: Users },
             ].map((item) => {
               const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
               const Icon = item.icon;

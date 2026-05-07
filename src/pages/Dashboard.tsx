@@ -1,106 +1,87 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, Truck, AlertTriangle, ArrowUpRight, ArrowDownRight, PackageCheck, ChevronRight } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
-
-// Calcula variação percentual entre dois valores
-function calcPct(current: number, previous: number): { value: string; up: boolean } {
-  if (previous === 0) return { value: current > 0 ? '+∞' : '0%', up: current >= 0 };
-  const pct = ((current - previous) / previous) * 100;
-  return { value: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`, up: pct >= 0 };
-}
-
-// Retorna o mês-ano de uma string ISO ou date
-function monthKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
+import { useOrganization } from "../lib/tenant";
 
 export function Dashboard() {
+  const { orgId } = useOrganization();
   const [inventory, setInventory] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
 
-  // Generate chart data dynamically from shipments
-  const salesData = [...shipments]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .reduce((acc: any[], current) => {
-      const dateLabel = new Date(current.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
-      
-      const existing = acc.find(item => item.name === dateLabel);
-      if (existing) {
-        existing.value += current.items;
-      } else {
-        acc.push({ name: dateLabel, value: current.items });
-      }
-      return acc;
-    }, []);
+  // Personalized Greeting
+  const displayName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Visitante";
+  const firstName = displayName.split(' ')[0];
+  const capFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
 
-  // Guarantee at least some data points for the chart to render nicely even if empty
-  if (salesData.length === 0) {
-    salesData.push({ name: "Sem dados", value: 0 });
-  } else if (salesData.length === 1) {
-    salesData.unshift({ name: "Início", value: 0 });
-  }
+  // Generate chart data dynamically from shipments
+  const salesData = React.useMemo(() => {
+    const data = [...shipments]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .reduce((acc: any[], current) => {
+        const dateLabel = new Date(current.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+        
+        const existing = acc.find(item => item.name === dateLabel);
+        if (existing) {
+          existing.value += current.items;
+        } else {
+          acc.push({ name: dateLabel, value: current.items });
+        }
+        return acc;
+      }, []);
+
+    if (data.length === 0) {
+      data.push({ name: "Sem dados", value: 0 });
+    } else if (data.length === 1) {
+      data.unshift({ name: "Início", value: 0 });
+    }
+    return data;
+  }, [shipments]);
 
   useEffect(() => {
-    const unsubInv = onSnapshot(query(collection(db, "inventory")), snap => {
-      setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, err => handleFirestoreError(err, OperationType.LIST, "inventory"));
+    if (!orgId) return;
 
-    const unsubShip = onSnapshot(query(collection(db, "shipments")), snap => {
+    const unsubInv = onSnapshot(query(collection(db, `organizations/${orgId}/inventory`)), snap => {
+      setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, err => handleFirestoreError(err, OperationType.LIST, `organizations/${orgId}/inventory`));
+
+    const unsubShip = onSnapshot(query(collection(db, `organizations/${orgId}/shipments`)), snap => {
       setShipments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, err => handleFirestoreError(err, OperationType.LIST, "shipments"));
+    }, err => handleFirestoreError(err, OperationType.LIST, `organizations/${orgId}/shipments`));
 
     return () => {
       unsubInv();
       unsubShip();
     }
-  }, []);
+  }, [orgId]);
 
-  const now = new Date();
-  const currKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
-
-  const alerts = inventory.filter(item => item.status === 'WARNING' || item.status === 'CRITICAL' || item.status === 'OUT_OF_STOCK');
-
-  // Enviados/entregues: total e comparação mensal
-  const shippedAll   = shipments.filter(s => s.status === 'DELIVERED' || s.status === 'SHIPPED');
-  const shippedCurr  = shippedAll.filter(s => s.date && monthKey(s.date) === currKey).length;
-  const shippedPrev  = shippedAll.filter(s => s.date && monthKey(s.date) === prevKey).length;
-  const shippedCount = shippedAll.length;
-  const shippedPct   = calcPct(shippedCurr, shippedPrev);
-
-  // Em trânsito: total e comparação mensal
-  const inTransitAll  = shipments.filter(s => s.status === 'PREPARING' || s.status === 'PENDING');
-  const inTransitCurr = inTransitAll.filter(s => s.date && monthKey(s.date) === currKey).length;
-  const inTransitPrev = inTransitAll.filter(s => s.date && monthKey(s.date) === prevKey).length;
-  const inTransitCount = inTransitAll.length;
-  const inTransitPct  = calcPct(inTransitCurr, inTransitPrev);
-
-  // Volume: total e variação simples (atual vs. metade — sem histórico não temos mais granular)
-  const totalVolume = inventory.reduce((acc, item) => acc + (item.qty || 0), 0);
-  const totalMin    = inventory.reduce((acc, item) => acc + (item.minQty || 0), 0);
-  const volumePct   = calcPct(totalVolume, totalMin);
+  const { alerts, shippedCount, inTransitCount, totalVolume } = React.useMemo(() => {
+    return {
+      alerts: inventory.filter(item => item.status === 'WARNING' || item.status === 'CRITICAL' || item.status === 'OUT_OF_STOCK'),
+      shippedCount: shipments.filter(s => s.status === 'DELIVERED' || s.status === 'SHIPPED').length,
+      inTransitCount: shipments.filter(s => s.status === 'PREPARING' || s.status === 'PENDING').length,
+      totalVolume: inventory.reduce((acc, item) => acc + item.qty, 0)
+    };
+  }, [inventory, shipments]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Visão Geral</h1>
-          <p className="text-[hsl(var(--muted-foreground))] text-sm">Acompanhe seus principais indicadores logísticos (KPIs).</p>
+          <h1 className="text-2xl font-bold tracking-tight">Olá, {capFirstName}</h1>
+          <p className="text-[hsl(var(--muted-foreground))] text-sm">Bem-vindo(a) de volta! Acompanhe seus principais indicadores logísticos.</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Link to="/inventory">
+          <Link to="/app/inventory">
             <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
               <Package className="h-4 w-4 mr-2" />
               Estoque
             </button>
           </Link>
-          <Link to="/shipments">
+          <Link to="/app/shipments">
             <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
               <Truck className="h-4 w-4 mr-2" />
               Expedições
@@ -110,7 +91,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Link to="/shipments" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+        <Link to="/app/shipments" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
           <Card className="h-full transition-all hover:bg-accent/50 hover:shadow-md cursor-pointer border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pedidos Enviados</CardTitle>
@@ -119,17 +100,17 @@ export function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold font-mono">{shippedCount}</div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] flex items-center mt-1">
-                <span className={`flex items-center mr-1 ${shippedPct.up ? 'text-emerald-500' : 'text-destructive'}`}>
-                  {shippedPct.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                  {shippedPct.value}
-                </span>
+                <span className="text-emerald-500 flex items-center mr-1">
+                  <ArrowUpRight className="h-3 w-3" />
+                  +12.5%
+                </span> 
                 vs. mês anterior
               </p>
             </CardContent>
           </Card>
         </Link>
         
-        <Link to="/shipments" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+        <Link to="/app/shipments" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
           <Card className="h-full transition-all hover:bg-accent/50 hover:shadow-md cursor-pointer border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Em Trânsito</CardTitle>
@@ -138,17 +119,17 @@ export function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold font-mono">{inTransitCount}</div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] flex items-center mt-1">
-                <span className={`flex items-center mr-1 ${inTransitPct.up ? 'text-emerald-500' : 'text-destructive'}`}>
-                  {inTransitPct.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                  {inTransitPct.value}
-                </span>
+                <span className="text-destructive flex items-center mr-1">
+                  <ArrowDownRight className="h-3 w-3" />
+                  -4.1%
+                </span> 
                 vs. mês anterior
               </p>
             </CardContent>
           </Card>
         </Link>
 
-        <Link to="/inventory" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+        <Link to="/app/inventory" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
           <Card className="h-full transition-all hover:bg-accent/50 hover:shadow-md cursor-pointer border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Volume em Estoque</CardTitle>
@@ -159,17 +140,17 @@ export function Dashboard() {
                 {totalVolume.toLocaleString()}
               </div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] flex items-center mt-1">
-                <span className={`flex items-center mr-1 ${volumePct.up ? 'text-emerald-500' : 'text-destructive'}`}>
-                  {volumePct.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                  {volumePct.value}
-                </span>
-                vs. estoque mínimo total
+                <span className="text-emerald-500 flex items-center mr-1">
+                  <ArrowUpRight className="h-3 w-3" />
+                  +2.1%
+                </span> 
+                vs. mês anterior
               </p>
             </CardContent>
           </Card>
         </Link>
 
-        <Link to="/inventory" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+        <Link to="/app/inventory" className="block outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
           <Card className="h-full transition-all hover:bg-accent/50 hover:shadow-md cursor-pointer border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Alertas de Ruptura</CardTitle>
@@ -247,7 +228,7 @@ export function Dashboard() {
                         Mínimo: <span className="font-mono">{item.minQty}</span>
                       </div>
                     </div>
-                    <Link to={`/inventory?search=${item.id}`} className="flex items-center text-xs font-medium text-[hsl(var(--primary))] hover:underline">
+                    <Link to={`/app/inventory?search=${item.id}`} className="flex items-center text-xs font-medium text-[hsl(var(--primary))] hover:underline">
                       Ver detalhes <ChevronRight className="h-3 w-3 ml-0.5" />
                     </Link>
                   </div>

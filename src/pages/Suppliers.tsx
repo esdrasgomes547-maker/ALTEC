@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,10 +7,12 @@ import { Search, Plus, Filter, Download, Star, Phone, Mail, X, Trash2, Edit2 } f
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { sendWhatsAppNotification, sendEmailReport, generateSuppliersReport } from "../lib/notificationService";
+import { useOrganization } from "../lib/tenant";
 
 const initialSuppliers: any[] = [];
 
 export function Suppliers() {
+  const { orgId } = useOrganization();
   const [searchTerm, setSearchTerm] = useState("");
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -18,20 +20,24 @@ export function Suppliers() {
   const [newSupplierForm, setNewSupplierForm] = useState({ name: "", category: "Conexões", phone: "", email: "" });
 
   useEffect(() => {
-    const q = query(collection(db, "suppliers"));
+    if (!orgId) return;
+    const q = query(collection(db, `organizations/${orgId}/suppliers`));
     const unsub = onSnapshot(q, (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setSuppliers(items);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, "suppliers");
+      handleFirestoreError(error, OperationType.LIST, `organizations/${orgId}/suppliers`);
     });
     return () => unsub();
-  }, []);
+  }, [orgId]);
 
-  const filteredData = suppliers.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = React.useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return suppliers.filter(item => 
+      item.name.toLowerCase().includes(term) || 
+      item.category.toLowerCase().includes(term)
+    );
+  }, [suppliers, searchTerm]);
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
@@ -45,10 +51,11 @@ export function Suppliers() {
   };
 
   const handleSaveSupplier = async () => {
+    if (!orgId) return;
     try {
       if (editingId) {
         // We preserve rating and status using updateDoc
-        await updateDoc(doc(db, "suppliers", editingId), newSupplierForm);
+        await updateDoc(doc(db, `organizations/${orgId}/suppliers`, editingId), newSupplierForm);
       } else {
         const newId = `FOR-${String(Math.floor(Math.random() * 1000) + 100).padStart(3, '0')}`;
         const newSupplier = {
@@ -56,22 +63,23 @@ export function Suppliers() {
           rating: 0,
           status: "REVIEW_NEEDED",
         };
-        await setDoc(doc(db, "suppliers", newId), newSupplier);
+        await setDoc(doc(db, `organizations/${orgId}/suppliers`, newId), newSupplier);
       }
       setIsAddModalOpen(false);
       setEditingId(null);
       setNewSupplierForm({ name: "", category: "Conexões", phone: "", email: "" });
     } catch (error) {
-      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, `suppliers/${editingId || 'new'}`);
+      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, `organizations/${orgId}/suppliers/${editingId || 'new'}`);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if(confirm("Deseja apagar este fornecedor?")) {
+    if(!orgId) return;
+    if(window.confirm("Deseja apagar este fornecedor?")) {
       try {
-        await deleteDoc(doc(db, "suppliers", id));
+        await deleteDoc(doc(db, `organizations/${orgId}/suppliers`, id));
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `suppliers/${id}`);
+        handleFirestoreError(error, OperationType.DELETE, `organizations/${orgId}/suppliers/${id}`);
       }
     }
   };

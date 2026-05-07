@@ -9,8 +9,10 @@ import { Search, Plus, Download, Filter, History, X, ArrowUpRight, ArrowDownRigh
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { sendWhatsAppNotification, sendEmailReport, generateInventoryReport } from "../lib/notificationService";
+import { useOrganization } from "../lib/tenant";
 
 export function Inventory() {
+  const { orgId } = useOrganization();
   const [searchParams] = useSearchParams();
   const [inventory, setInventory] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
@@ -19,33 +21,37 @@ export function Inventory() {
   const [newMovement, setNewMovement] = useState({ type: "IN", qty: 0, reason: "" });
 
   useEffect(() => {
-    if (!selectedProduct) {
+    if (!selectedProduct || !orgId) {
       setHistory([]);
       return;
     }
-    const q = query(collection(db, `inventory/${selectedProduct.id}/movements`));
+    const q = query(collection(db, `organizations/${orgId}/inventory/${selectedProduct.id}/movements`));
     const unsub = onSnapshot(q, (snap) => {
       const h = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setHistory(h);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, `inventory/${selectedProduct.id}/movements`));
+    }, (err) => handleFirestoreError(err, OperationType.LIST, `organizations/${orgId}/inventory/${selectedProduct.id}/movements`));
     return () => unsub();
-  }, [selectedProduct]);
+  }, [selectedProduct, orgId]);
 
   useEffect(() => {
-    const q = query(collection(db, "inventory"));
+    if (!orgId) return;
+    const q = query(collection(db, `organizations/${orgId}/inventory`));
     const unsub = onSnapshot(q, (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setInventory(items);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, "inventory");
+      handleFirestoreError(error, OperationType.LIST, `organizations/${orgId}/inventory`);
     });
     return () => unsub();
-  }, []);
+  }, [orgId]);
 
-  const filteredData = inventory.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = React.useMemo(() => {
+    const lowerTerm = searchTerm.toLowerCase();
+    return inventory.filter(item => 
+      item.name.toLowerCase().includes(lowerTerm) || 
+      item.id.toLowerCase().includes(lowerTerm)
+    );
+  }, [inventory, searchTerm]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedItems(e.target.checked ? filteredData.map(item => item.id) : []);
@@ -56,12 +62,13 @@ export function Inventory() {
   };
 
   const handleDeleteSelected = async () => {
+    if(!orgId) return;
     if(window.confirm(`Tem certeza que deseja arquivar ${selectedItems.length} produtos?`)) {
       for (const id of selectedItems) {
         try {
-          await deleteDoc(doc(db, "inventory", id));
+          await deleteDoc(doc(db, `organizations/${orgId}/inventory`, id));
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `inventory/${id}`);
+          handleFirestoreError(error, OperationType.DELETE, `organizations/${orgId}/inventory/${id}`);
         }
       }
       setSelectedItems([]);
@@ -69,16 +76,17 @@ export function Inventory() {
   };
 
   const handleUpdateStatus = async () => {
+    if (!orgId) return;
     for (const id of selectedItems) {
       const item = inventory.find(i => i.id === id);
       if (item) {
         try {
-          await updateDoc(doc(db, "inventory", id), {
+          await updateDoc(doc(db, `organizations/${orgId}/inventory`, id), {
             status: 'OK',
             qty: Math.max(item.qty, item.minQty + 10)
           });
         } catch (error) {
-          handleFirestoreError(error, OperationType.UPDATE, `inventory/${id}`);
+          handleFirestoreError(error, OperationType.UPDATE, `organizations/${orgId}/inventory/${id}`);
         }
       }
     }
@@ -86,6 +94,7 @@ export function Inventory() {
   };
 
   const seedGLPCatalog = async () => {
+    if (!orgId) return;
     const glpParts = [
       { name: "Tubo de Cobre Classe A 15mm", category: "Tubulações", location: "A1", minQty: 50, price: 45.0, qty: 100 },
       { name: "Válvula Esfera Angular 1/2\"", category: "Conexões", location: "B2", minQty: 20, price: 35.5, qty: 45 },
@@ -101,9 +110,9 @@ export function Inventory() {
       const newId = `GLP-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
       const status = part.qty <= part.minQty ? 'WARNING' : 'OK';
       try {
-        await setDoc(doc(db, "inventory", newId), { ...part, status });
+        await setDoc(doc(db, `organizations/${orgId}/inventory`, newId), { ...part, status });
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `inventory/${newId}`);
+        handleFirestoreError(error, OperationType.CREATE, `organizations/${orgId}/inventory/${newId}`);
       }
     }
   };
@@ -162,7 +171,7 @@ export function Inventory() {
   };
 
   const handleSaveProduct = async () => {
-    if (!validateForm()) return;
+    if (!validateForm() || !orgId) return;
 
     let newStatus = 'OK';
     if(newItemForm.qty <= 0) newStatus = 'OUT_OF_STOCK';
@@ -176,17 +185,17 @@ export function Inventory() {
     
     try {
       if (editingId) {
-        await updateDoc(doc(db, "inventory", editingId), newProduct);
+        await updateDoc(doc(db, `organizations/${orgId}/inventory`, editingId), newProduct);
       } else {
         const newId = `GLP-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
-        await setDoc(doc(db, "inventory", newId), newProduct);
+        await setDoc(doc(db, `organizations/${orgId}/inventory`, newId), newProduct);
       }
       setIsAddModalOpen(false);
       setEditingId(null);
       setFormErrors({});
       setNewItemForm({ name: "", category: "Conexões", location: "", qty: 0, minQty: 10, price: 0 });
     } catch (error) {
-      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, `inventory/${editingId || 'new'}`);
+      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, `organizations/${orgId}/inventory/${editingId || 'new'}`);
     }
   };
 
@@ -205,7 +214,7 @@ export function Inventory() {
   };
 
   const handleAddMovement = async () => {
-    if (!newMovement.reason || newMovement.qty <= 0) return;
+    if (!newMovement.reason || newMovement.qty <= 0 || !orgId) return;
     const movementId = `MOV-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     const user = auth.currentUser;
     const movData = {
@@ -225,20 +234,24 @@ export function Inventory() {
        else if(newQty <= selectedProduct.minQty + 5) newStatus = 'WARNING';
        else newStatus = 'OK';
 
-       await updateDoc(doc(db, "inventory", selectedProduct.id), {
+       await updateDoc(doc(db, `organizations/${orgId}/inventory`, selectedProduct.id), {
          qty: newQty,
          status: newStatus
        });
 
-       await setDoc(doc(db, `inventory/${selectedProduct.id}/movements`, movementId), movData);
+       await setDoc(doc(db, `organizations/${orgId}/inventory/${selectedProduct.id}/movements`, movementId), movData);
        setNewMovement({ type: "IN", qty: 0, reason: "" });
        
        // Update selectedProduct so the UI updates
        setSelectedProduct({ ...selectedProduct, qty: newQty, status: newStatus });
     } catch (error) {
-       handleFirestoreError(error, OperationType.CREATE, `inventory/${selectedProduct.id}/movements`);
+       handleFirestoreError(error, OperationType.CREATE, `organizations/${orgId}/inventory/${selectedProduct.id}/movements`);
     }
   };
+
+  const sortedHistory = React.useMemo(() => {
+    return [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [history]);
 
   const allSelected = filteredData.length > 0 && selectedItems.length === filteredData.length;
   const isIndeterminate = selectedItems.length > 0 && selectedItems.length < filteredData.length;
@@ -579,7 +592,7 @@ export function Inventory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((mov) => (
+                    {sortedHistory.map((mov) => (
                       <TableRow key={mov.id}>
                         <TableCell className="text-xs text-[hsl(var(--muted-foreground))]">
                           {new Date(mov.date).toLocaleDateString('pt-BR')} <br className="hidden sm:block" />

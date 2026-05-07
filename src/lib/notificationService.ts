@@ -17,7 +17,7 @@ export const generateSuppliersReport = (suppliers: any[]) => {
   const date = new Date().toLocaleDateString('pt-BR');
   let report = `*RELATÓRIO DE FORNECEDORES - TECGAS (${date})*\n\n`;
   
-  const active = suppliers.filter(s => s.status === 'APPROVED');
+  const active = suppliers.filter(s => s.status === 'ACTIVE');
   const review = suppliers.filter(s => s.status === 'REVIEW_NEEDED');
   
   report += `*Aprovados (${active.length}):*\n`;

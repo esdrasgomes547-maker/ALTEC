@@ -147,7 +147,7 @@ Reescreva completamente as regras para multi-tenant + roles:
 ```javascript
 // Regras de acesso:
 // master      → lê e escreve TUDO em qualquer organização
-// premium_max → lê e escreve apenas na própria organização
+// premium_max �� lê e escreve apenas na própria organização
 // inactive/sem role → lê apenas /subscriptions/{orgId} e /users/{uid} próprios
 
 // Funções auxiliares necessárias:

@@ -1,123 +1,60 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Funções auxiliares
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isMaster() {
+      return isSignedIn() && (
+        request.auth.token.email == 'esdrasgomes547@gmail.com' ||
+        exists(/databases/$(database)/documents/masters/$(request.auth.token.email))
+      );
+    }
+    
+    function isPremiumMax() {
+      // Para simulação frontend: assumimos que premium_max está no documento do usuário
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'premium_max'
+      );
+    }
+    
+    function isOrgMember(orgId) {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId == orgId
+      );
+    }
+    
+    // Default Deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    function isSignedIn() { return request.auth != null; }
-    function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
-    function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
-    
-    function isStringWithMax(val, max) { return val is string && val.size() <= max; }
-
-    function isValidEmployee(data) {
-      return data.keys().hasOnly(['name', 'role', 'age', 'status', 'equipment', 'requests']) &&
-             isStringWithMax(data.name, 100) &&
-             isStringWithMax(data.role, 100) &&
-             data.age is number &&
-             isStringWithMax(data.status, 20) &&
-             data.status in ["ACTIVE", "INACTIVE", "ON_LEAVE"] &&
-             (!('equipment' in data) || (data.equipment is list && data.equipment.size() <= 100)) &&
-             (!('requests' in data) || (data.requests is list && data.requests.size() <= 100));
+    match /masters/{emailId} {
+      allow read, write: if isMaster();
     }
 
-    function isValidInventoryItem(data) {
-      return data.keys().hasOnly(['name', 'category', 'location', 'qty', 'minQty', 'status', 'price']) &&
-             isStringWithMax(data.name, 150) &&
-             isStringWithMax(data.category, 100) &&
-             isStringWithMax(data.location, 100) &&
-             data.qty is number &&
-             data.minQty is number &&
-             isStringWithMax(data.status, 20) &&
-             data.status in ["OK", "WARNING", "CRITICAL", "OUT_OF_STOCK"] &&
-             data.price is number;
-    }
-
-    function isValidShipment(data) {
-      return data.keys().hasOnly(['destination', 'items', 'status', 'driver', 'vehicle', 'date']) &&
-             isStringWithMax(data.destination, 200) &&
-             data.items is number &&
-             isStringWithMax(data.status, 50) &&
-             isStringWithMax(data.driver, 100) &&
-             isStringWithMax(data.vehicle, 50) &&
-             isStringWithMax(data.date, 50);
-    }
-
-    function isValidSupplier(data) {
-      return data.keys().hasOnly(['name', 'category', 'rating', 'phone', 'email', 'status']) &&
-             isStringWithMax(data.name, 150) &&
-             isStringWithMax(data.category, 50) &&
-             data.rating is number &&
-             isStringWithMax(data.phone, 30) &&
-             isStringWithMax(data.email, 100) &&
-             isStringWithMax(data.status, 30);
-    }
-
-    function isValidSettings(data) {
-      return data.keys().hasOnly(['companyName', 'cnpj', 'email', 'phone', 'lowStockAlerts', 'shipmentUpdates', 'dailyEmail']) &&
-             (!('companyName' in data) || isStringWithMax(data.companyName, 100)) &&
-             (!('cnpj' in data) || isStringWithMax(data.cnpj, 20)) &&
-             (!('email' in data) || isStringWithMax(data.email, 100)) &&
-             (!('phone' in data) || isStringWithMax(data.phone, 30)) &&
-             (!('lowStockAlerts' in data) || data.lowStockAlerts is bool) &&
-             (!('shipmentUpdates' in data) || data.shipmentUpdates is bool) &&
-             (!('dailyEmail' in data) || data.dailyEmail is bool);
-    }
-
-    function isValidMovement(data) {
-      return data.keys().hasOnly(['type', 'qty', 'reason', 'date', 'user', 'userEmail']) &&
-             isStringWithMax(data.type, 10) &&
-             data.type in ["IN", "OUT"] &&
-             data.qty is number &&
-             isStringWithMax(data.reason, 200) &&
-             isStringWithMax(data.date, 50) &&
-             isStringWithMax(data.user, 100) &&
-             isStringWithMax(data.userEmail, 100);
-    }
-
-    match /employees/{employeeId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(employeeId) && isValidEmployee(incoming());
-      allow update: if isSignedIn() && isValidId(employeeId) && isValidEmployee(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'age', 'status', 'equipment', 'requests']);
-      allow delete: if isSignedIn() && isValidId(employeeId);
-    }
-
-    match /inventory/{itemId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(itemId) && isValidInventoryItem(incoming());
-      allow update: if isSignedIn() && isValidId(itemId) && isValidInventoryItem(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'location', 'qty', 'minQty', 'status', 'price']);
-      allow delete: if isSignedIn() && isValidId(itemId);
-      
-      match /movements/{movementId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn() && isValidId(movementId) && isValidMovement(incoming());
-        allow update: if isSignedIn() && isValidId(movementId) && isValidMovement(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['type', 'qty', 'reason', 'date', 'user', 'userEmail']);
-        allow delete: if isSignedIn() && isValidId(movementId);
-      }
-    }
-
-    match /shipments/{shipmentId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(shipmentId) && isValidShipment(incoming());
-      allow update: if isSignedIn() && isValidId(shipmentId) && isValidShipment(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['destination', 'items', 'status', 'driver', 'vehicle', 'date']);
-      allow delete: if isSignedIn() && isValidId(shipmentId);
-    }
-
-    match /suppliers/{supplierId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(supplierId) && isValidSupplier(incoming());
-      allow update: if isSignedIn() && isValidId(supplierId) && isValidSupplier(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'rating', 'phone', 'email', 'status']);
-      allow delete: if isSignedIn() && isValidId(supplierId);
+    match /organizations/{orgId} {
+      allow read, write: if isMaster() || (isPremiumMax() && isOrgMember(orgId));
     }
     
-    match /settings/{settingsId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(settingsId) && isValidSettings(incoming());
-      allow update: if isSignedIn() && isValidId(settingsId) && isValidSettings(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['companyName', 'cnpj', 'email', 'phone', 'lowStockAlerts', 'shipmentUpdates', 'dailyEmail']);
-      allow delete: if isSignedIn() && isValidId(settingsId);
+    // Permissões por Coleção
+    match /organizations/{orgId}/{document=**} {
+      allow read, write: if isMaster() || (isPremiumMax() && isOrgMember(orgId));
     }
-
+    
+    match /users/{uid} {
+      allow read, write: if isMaster() || (isSignedIn() && request.auth.uid == uid);
+    }
+    
+    match /subscriptions/{orgId} {
+      allow read: if isMaster() || isOrgMember(orgId);
+      allow write: if isMaster() || isOrgMember(orgId); // Permite ao próprio usuário simular ativação via checkout frontend
+    }
   }
 }
+
