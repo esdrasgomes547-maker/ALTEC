@@ -5,11 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, ShieldAlert, CreditCard, Activity, Pause, Play, Eye } from 'lucide-react';
+import { Search, ShieldAlert, CreditCard, Activity, Play, Eye } from 'lucide-react';
 
 export function MasterPanel() {
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [subscriptions, setSubscriptions] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddMasterModalOpen, setIsAddMasterModalOpen] = useState(false);
   const [newMasterEmail, setNewMasterEmail] = useState('');
@@ -21,32 +20,19 @@ export function MasterPanel() {
       setOrganizations(snap.docs.map(d => ({ orgId: d.id, ...d.data() })));
     }, (error) => handleFirestoreError(error, OperationType.LIST, "organizations"));
 
-    // Escuta Subscriptions
-    const qSub = query(collection(db, "subscriptions"));
-    const unsubSub = onSnapshot(qSub, (snap) => {
-       const subMap: Record<string, any> = {};
-       snap.docs.forEach(d => {
-         subMap[d.id] = d.data();
-       });
-       setSubscriptions(subMap);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, "subscriptions"));
-
     return () => {
       unsubOrg();
-      unsubSub();
     };
   }, []);
 
-  const { totalOrgs, activeOrgs, overdueOrgs, mrr } = React.useMemo(() => {
-    const active = organizations.filter(o => o.status === 'active' || subscriptions[o.orgId]?.status === 'active').length;
-    const overdue = organizations.filter(o => subscriptions[o.orgId]?.status === 'overdue').length;
+  const { totalOrgs, activeOrgs, mrr } = React.useMemo(() => {
+    const active = organizations.filter(o => o.status === 'active').length;
     return {
       totalOrgs: organizations.length,
       activeOrgs: active,
-      overdueOrgs: overdue,
       mrr: active * 10
     };
-  }, [organizations, subscriptions]);
+  }, [organizations]);
 
   const handleSetMaster = async () => {
     if (!newMasterEmail) return;
@@ -109,15 +95,6 @@ export function MasterPanel() {
             <div className="text-2xl font-bold text-blue-500">{activeOrgs}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Inadimplentes</CardTitle>
-            <Pause className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">{overdueOrgs}</div>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
@@ -141,37 +118,34 @@ export function MasterPanel() {
                 <TableRow>
                   <TableHead>Org ID</TableHead>
                   <TableHead>Data de Criação</TableHead>
-                  <TableHead>Status (Sub)</TableHead>
-                  <TableHead>Próx. Cobrança</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrgs.map(org => {
-                  const sub = subscriptions[org.orgId] || {};
-                  return (
-                    <TableRow key={org.orgId}>
-                      <TableCell className="font-mono text-xs">{org.orgId}</TableCell>
-                      <TableCell>{org.createdAt ? new Date(org.createdAt.seconds * 1000).toLocaleDateString("pt-BR") : "N/A"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={
-                          sub.status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
-                          sub.status === 'overdue' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'
-                        }>
-                          {sub.status || org.status || "Desconhecido"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{sub.nextBillingDate ? new Date(sub.nextBillingDate.seconds * 1000).toLocaleDateString("pt-BR") : "-"}</TableCell>
-                      <TableCell className="text-right flex items-center justify-end space-x-2">
-                        <Button variant="ghost" size="sm" className="h-8">
-                          <Eye className="h-4 w-4 mr-1" /> View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+               </TableHeader>
+               <TableBody>
+                 {filteredOrgs.map(org => {
+                   return (
+                     <TableRow key={org.orgId}>
+                       <TableCell className="font-mono text-xs">{org.orgId}</TableCell>
+                       <TableCell>{org.createdAt ? new Date(org.createdAt.seconds * 1000).toLocaleDateString("pt-BR") : "N/A"}</TableCell>
+                       <TableCell>
+                         <Badge variant="outline" className={
+                           org.status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                           'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'
+                         }>
+                           {org.status || "Desconhecido"}
+                         </Badge>
+                       </TableCell>
+                       <TableCell className="text-right flex items-center justify-end space-x-2">
+                         <Button variant="ghost" size="sm" className="h-8">
+                           <Eye className="h-4 w-4 mr-1" /> View
+                         </Button>
+                       </TableCell>
+                     </TableRow>
+                   );
+                 })}
+               </TableBody>
+             </Table>
           </div>
         </CardContent>
       </Card>

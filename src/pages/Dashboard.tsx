@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, Truck, AlertTriangle, ArrowUpRight, ArrowDownRight, PackageCheck, ChevronRight } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, doc } from "firebase/firestore";
 import { useOrganization } from "../lib/tenant";
 
 export function Dashboard() {
   const { orgId } = useOrganization();
   const [inventory, setInventory] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
+  const [companySettings, setCompanySettings] = useState<any>(null);
 
   // Personalized Greeting
   const displayName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Visitante";
@@ -44,6 +45,10 @@ export function Dashboard() {
   useEffect(() => {
     if (!orgId) return;
 
+    const unsubSettings = onSnapshot(doc(db, `organizations/${orgId}/settings`, "default"), snap => {
+      if (snap.exists()) setCompanySettings(snap.data());
+    });
+
     const unsubInv = onSnapshot(query(collection(db, `organizations/${orgId}/inventory`)), snap => {
       setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, err => handleFirestoreError(err, OperationType.LIST, `organizations/${orgId}/inventory`));
@@ -53,6 +58,7 @@ export function Dashboard() {
     }, err => handleFirestoreError(err, OperationType.LIST, `organizations/${orgId}/shipments`));
 
     return () => {
+      unsubSettings();
       unsubInv();
       unsubShip();
     }
@@ -72,12 +78,21 @@ export function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Olá, {capFirstName}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Olá, {capFirstName}
+              {companySettings?.companyName && (
+                <span className="text-[hsl(var(--muted-foreground))] font-normal ml-1">
+                  da {companySettings.companyName}
+                </span>
+              )}
+            </h1>
             {localStorage.getItem('master_bypass') === 'true' && (
               <span className="bg-yellow-500/10 text-yellow-600 text-[10px] font-black px-2 py-0.5 rounded border border-yellow-500/20 uppercase tracking-tight">Master Bypass</span>
             )}
           </div>
-          <p className="text-[hsl(var(--muted-foreground))] text-sm">Bem-vindo(a) de volta! Acompanhe seus principais indicadores logísticos.</p>
+          <p className="text-[hsl(var(--muted-foreground))] text-sm">
+            {companySettings?.welcomeMessage || "Bem-vindo(a) de volta! Acompanhe seus principais indicadores logísticos."}
+          </p>
         </div>
         <div className="flex items-center space-x-2">
           <Link to="/app/inventory">

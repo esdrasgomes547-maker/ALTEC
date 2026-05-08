@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell, User, Lock, Building, Truck, Globe, MapPin } from "lucide-react";
+import { Bell, User, Lock, Building, Truck, Globe, MapPin, Upload, X, Loader2 } from "lucide-react";
 import { useTheme } from "../components/ThemeProvider";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -10,9 +10,12 @@ import { useOrganization } from "../lib/tenant";
 export function Settings() {
   const { orgId } = useOrganization();
   const { theme, setTheme } = useTheme();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [settings, setSettings] = useState({
     companyName: "Almox pro - Gestão",
     avatarUrl: "",
+    welcomeMessage: "",
     cnpj: "00.000.000/0001-00",
     email: "contato@almoxpro.com.br",
     phone: "(11) 4002-8922",
@@ -47,6 +50,34 @@ export function Settings() {
     }
   };
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamanho (max 1MB para base64 no firestore preventively)
+    if (file.size > 1024 * 1024) {
+      alert("A imagem deve ter no máximo 1MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setSettings(prev => ({ ...prev, avatarUrl: base64String }));
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      alert("Erro ao ler o arquivo.");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAvatar = () => {
+    setSettings(prev => ({ ...prev, avatarUrl: "" }));
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
       <div>
@@ -70,8 +101,71 @@ export function Settings() {
                 <input type="text" className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" value={settings.companyName} onChange={e => setSettings({...settings, companyName: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">URL do Avatar</label>
-                <input type="text" placeholder="https://exemplo.com/foto.jpg" className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" value={settings.avatarUrl} onChange={e => setSettings({...settings, avatarUrl: e.target.value})} />
+                <label className="text-sm font-medium">Logo da Empresa</label>
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative h-20 w-20 rounded-lg border-2 border-dashed border-[hsl(var(--border))] flex items-center justify-center overflow-hidden bg-[hsl(var(--muted))]/30 group">
+                      {settings.avatarUrl ? (
+                        <>
+                          <img src={settings.avatarUrl} alt="Logo Preview" className="h-full w-full object-contain" />
+                          <button 
+                            onClick={removeAvatar}
+                            className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-5 w-5 text-white" />
+                          </button>
+                        </>
+                      ) : (
+                        <Building className="h-8 w-8 text-[hsl(var(--muted-foreground))]" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleFileChange}
+                      />
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        Selecionar Imagem
+                      </Button>
+                      <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Recomendado: 512x512px. Máx: 1MB.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Ou link externo</label>
+                    <input 
+                      type="text" 
+                      placeholder="https://exemplo.com/logo.jpg" 
+                      className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" 
+                      value={settings.avatarUrl} 
+                      onChange={e => setSettings({...settings, avatarUrl: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">Mensagem de Boas-vindas Personalizada</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Estamos felizes em ter você aqui!" 
+                  className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" 
+                  value={settings.welcomeMessage || ""} 
+                  onChange={e => setSettings({...settings, welcomeMessage: e.target.value})} 
+                />
+                <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Esta mensagem aparecerá no Dashboard de todos os usuários da sua empresa.</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">CNPJ</label>

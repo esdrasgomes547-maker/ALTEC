@@ -76,11 +76,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className={cn("h-16 flex items-center px-4 border-b border-[hsl(var(--border))]", isCollapsed && !isMobileOpen ? "justify-center" : "space-x-3")}>
-          <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+          <div className={cn("flex-shrink-0 flex items-center justify-center overflow-hidden", isCollapsed && !isMobileOpen ? "h-10 w-10" : "h-9 w-9")}>
             {appSettings.avatarUrl ? (
-              <img src={appSettings.avatarUrl} alt="Logo" className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
+              <img src={appSettings.avatarUrl} alt="Logo" className="w-full h-full rounded-md object-contain" referrerPolicy="no-referrer" />
             ) : (
-              <TecgasLogo />
+              <TecgasLogo className="w-full h-full" />
             )}
           </div>
           {(!isCollapsed || isMobileOpen) && <span className="font-bold text-lg tracking-tight shrink-0 uppercase">{appSettings.companyName}</span>}
@@ -115,8 +115,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className={cn("p-4 border-t border-[hsl(var(--border))] flex items-center group", isCollapsed && !isMobileOpen ? "justify-center px-2 flex-col space-y-4" : "justify-between")}>
           <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3")}>
             <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0 overflow-hidden relative">
-              {appSettings.avatarUrl ? (
-                <img src={appSettings.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : initials}
               {isMaster && (
                 <div className="absolute -bottom-1 -right-1 bg-yellow-500 rounded-full p-0.5 border border-[hsl(var(--card))]">
