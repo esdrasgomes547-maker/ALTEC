@@ -15,7 +15,7 @@ export const sendEmailReport = (email: string, subject: string, reportBody: stri
 
 export const generateSuppliersReport = (suppliers: any[]) => {
   const date = new Date().toLocaleDateString('pt-BR');
-  let report = `*RELATÓRIO DE FORNECEDORES - TECGAS (${date})*\n\n`;
+  let report = `*RELATÓRIO DE FORNECEDORES - Almox pro (${date})*\n\n`;
   
   const active = suppliers.filter(s => s.status === 'ACTIVE');
   const review = suppliers.filter(s => s.status === 'REVIEW_NEEDED');
@@ -35,7 +35,7 @@ export const generateSuppliersReport = (suppliers: any[]) => {
 
 export const generateShipmentsReport = (shipments: any[]) => {
   const date = new Date().toLocaleDateString('pt-BR');
-  let report = `*RELATÓRIO DE EXPEDIÇÕES - TECGAS (${date})*\n\n`;
+  let report = `*RELATÓRIO DE EXPEDIÇÕES - Almox pro (${date})*\n\n`;
   
   const inTransit = shipments.filter(s => s.status === 'SHIPPED');
   const delivered = shipments.filter(s => s.status === 'DELIVERED');
@@ -56,7 +56,7 @@ export const generateShipmentsReport = (shipments: any[]) => {
 
 export const generateInventoryReport = (inventory: any[]) => {
   const date = new Date().toLocaleDateString('pt-BR');
-  let report = `*RELATÓRIO DE ESTOQUE - TECGAS (${date})*\n\n`;
+  let report = `*RELATÓRIO DE ESTOQUE - Almox pro (${date})*\n\n`;
   
   const critical = inventory.filter(i => i.status === 'CRITICAL' || i.status === 'OUT_OF_STOCK');
   const ok = inventory.filter(i => i.status === 'OK');

@@ -29,7 +29,7 @@ export function Landing() {
             <div className="w-8 h-8">
               <TecgasLogo />
             </div>
-            <span className="font-bold text-xl tracking-tight">TECGAS | ALTEC</span>
+            <span className="font-bold text-xl tracking-tight">Almox pro</span>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogin}>
             Entrar
@@ -182,9 +182,9 @@ export function Landing() {
       <footer className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">
         <div className="flex items-center justify-center space-x-2 mb-4">
           <div className="w-6 h-6 grayscale opacity-80"><TecgasLogo /></div>
-          <span className="font-bold">TECGAS ALTEC</span>
+          <span className="font-bold text-lg uppercase">Almox pro</span>
         </div>
-        <p>&copy; 2025 ALTEC SaaS. Todos os direitos reservados.</p>
+        <p>&copy; 2025 Almox pro SaaS. Todos os direitos reservados.</p>
       </footer>
 
     </div>

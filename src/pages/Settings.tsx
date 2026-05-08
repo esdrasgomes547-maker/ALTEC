@@ -11,9 +11,10 @@ export function Settings() {
   const { orgId } = useOrganization();
   const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState({
-    companyName: "Tecgas GLP Solutions",
+    companyName: "Almox pro - Gestão",
+    avatarUrl: "",
     cnpj: "00.000.000/0001-00",
-    email: "contato@tecgas.com.br",
+    email: "contato@almoxpro.com.br",
     phone: "(11) 4002-8922",
     lowStockAlerts: true,
     shipmentUpdates: true,
@@ -67,6 +68,10 @@ export function Settings() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Nome da Empresa</label>
                 <input type="text" className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" value={settings.companyName} onChange={e => setSettings({...settings, companyName: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">URL do Avatar</label>
+                <input type="text" placeholder="https://exemplo.com/foto.jpg" className="w-full h-10 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]" value={settings.avatarUrl} onChange={e => setSettings({...settings, avatarUrl: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">CNPJ</label>

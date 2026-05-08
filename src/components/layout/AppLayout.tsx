@@ -4,14 +4,35 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, LogOut } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { TecgasLogo } from "../TecgasLogo";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { useOrganization } from "@/lib/tenant";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { orgId } = useOrganization();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const [appSettings, setAppSettings] = useState({
+    companyName: "Almox pro",
+    avatarUrl: ""
+  });
+
+  useEffect(() => {
+    if (!orgId) return;
+    const unsub = onSnapshot(doc(db, `organizations/${orgId}/settings`, "default"), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setAppSettings({
+          companyName: data.companyName || "Almox pro",
+          avatarUrl: data.avatarUrl || ""
+        });
+      }
+    });
+    return () => unsub();
+  }, [orgId]);
 
   const user = auth.currentUser;
   const displayName = user?.displayName || user?.email?.split('@')[0] || "Usuário";
@@ -48,10 +69,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className={cn("h-16 flex items-center px-4 border-b border-[hsl(var(--border))]", isCollapsed && !isMobileOpen ? "justify-center" : "space-x-3")}>
-          <div className="w-8 h-8 flex-shrink-0">
-            <TecgasLogo />
+          <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+            {appSettings.avatarUrl ? (
+              <img src={appSettings.avatarUrl} alt="Logo" className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <TecgasLogo />
+            )}
           </div>
-          {(!isCollapsed || isMobileOpen) && <span className="font-bold text-lg tracking-tight shrink-0">TECGAS</span>}
+          {(!isCollapsed || isMobileOpen) && <span className="font-bold text-lg tracking-tight shrink-0 uppercase">{appSettings.companyName}</span>}
         </div>
         
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
@@ -82,8 +107,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         
         <div className={cn("p-4 border-t border-[hsl(var(--border))] flex items-center group", isCollapsed && !isMobileOpen ? "justify-center px-2 flex-col space-y-4" : "justify-between")}>
           <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3")}>
-            <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
-              {initials}
+            <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0 overflow-hidden">
+              {appSettings.avatarUrl ? (
+                <img src={appSettings.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : initials}
             </div>
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex flex-col truncate">

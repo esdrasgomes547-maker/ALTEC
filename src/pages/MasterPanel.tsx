@@ -74,7 +74,7 @@ export function MasterPanel() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Master Panel</h1>
-          <p className="text-[hsl(var(--muted-foreground))] mt-1">Gestão de clientes e assinaturas do ALTEC.</p>
+          <p className="text-[hsl(var(--muted-foreground))] mt-1">Gestão de clientes e assinaturas do Almox pro.</p>
         </div>
         <Button onClick={() => setIsAddMasterModalOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white">
           <ShieldAlert className="w-4 h-4 mr-2" /> Promover a Master
