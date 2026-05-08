@@ -7,6 +7,7 @@ import { Suppliers } from "./pages/Suppliers";
 import { Settings as SettingsPage } from "./pages/Settings";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Landing } from "./pages/Landing";
+import { Login } from "./pages/Login";
 import { Subscribe } from "./pages/Subscribe";
 import { MasterPanel } from "./pages/MasterPanel";
 import { AccessGuard } from "./components/AccessGuard";
@@ -17,7 +18,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/subscribe" element={<Subscribe />} />
+          <Route path="/login" element={<Login />} />
           
           <Route 
             path="/master" 
@@ -36,7 +37,7 @@ export default function App() {
               <AccessGuard>
                 <AppLayout>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/app/inventory" replace />} />
+                    <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="inventory" element={<Inventory />} />
                     <Route path="shipments" element={<Shipments />} />

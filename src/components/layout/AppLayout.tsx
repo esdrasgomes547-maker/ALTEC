@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Truck, Users, Settings, Bell, Search, Menu, ChevronLeft, ChevronRight, Moon, Sun, LogOut, ShieldAlert } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { TecgasLogo } from "../TecgasLogo";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useOrganization } from "@/lib/tenant";
+import { useSubscription } from "@/lib/useSubscription";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { orgId } = useOrganization();
+  const { isMaster } = useSubscription();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -35,7 +37,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [orgId]);
 
   const user = auth.currentUser;
-  const displayName = user?.displayName || user?.email?.split('@')[0] || "Usuário";
+  const displayName = isMaster ? "Master Admin" : (user?.displayName || user?.email?.split('@')[0] || "Usuário");
   const initials = displayName.substring(0, 2).toUpperCase();
 
   const navItems = [
@@ -46,7 +48,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Configurações", path: "/app/settings", icon: Settings },
   ];
 
+  if (isMaster) {
+    navItems.push({ name: "Painel Master", path: "/master", icon: ShieldAlert });
+  }
+
   const handleLogout = () => {
+    localStorage.removeItem('master_bypass');
     signOut(auth).catch(console.error);
   };
 
@@ -107,10 +114,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         
         <div className={cn("p-4 border-t border-[hsl(var(--border))] flex items-center group", isCollapsed && !isMobileOpen ? "justify-center px-2 flex-col space-y-4" : "justify-between")}>
           <div className={cn("flex items-center", isCollapsed && !isMobileOpen ? "" : "space-x-3")}>
-            <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0 overflow-hidden">
+            <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-medium text-xs flex-shrink-0 overflow-hidden relative">
               {appSettings.avatarUrl ? (
                 <img src={appSettings.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : initials}
+              {isMaster && (
+                <div className="absolute -bottom-1 -right-1 bg-yellow-500 rounded-full p-0.5 border border-[hsl(var(--card))]">
+                   <ShieldAlert className="h-2 w-2 text-white" />
+                </div>
+              )}
             </div>
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex flex-col truncate">

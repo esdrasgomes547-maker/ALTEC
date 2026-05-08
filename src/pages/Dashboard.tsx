@@ -71,7 +71,12 @@ export function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Olá, {capFirstName}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">Olá, {capFirstName}</h1>
+            {localStorage.getItem('master_bypass') === 'true' && (
+              <span className="bg-yellow-500/10 text-yellow-600 text-[10px] font-black px-2 py-0.5 rounded border border-yellow-500/20 uppercase tracking-tight">Master Bypass</span>
+            )}
+          </div>
           <p className="text-[hsl(var(--muted-foreground))] text-sm">Bem-vindo(a) de volta! Acompanhe seus principais indicadores logísticos.</p>
         </div>
         <div className="flex items-center space-x-2">

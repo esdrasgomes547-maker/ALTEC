@@ -108,29 +108,29 @@
     }
   },
   "firestore": {
-    "/employees/{employeeId}": {
-      "schema": { "$ref": "#/entities/Employee" },
-      "description": "Employees Collection"
-    },
-    "/inventory/{itemId}": {
+    "/organizations/{orgId}/inventory/{itemId}": {
       "schema": { "$ref": "#/entities/InventoryItem" },
-      "description": "Inventory Items Collection"
+      "description": "Tenant Inventory Items Collection"
     },
-    "/inventory/{itemId}/movements/{movementId}": {
+    "/organizations/{orgId}/inventory/{itemId}/movements/{movementId}": {
       "schema": { "$ref": "#/entities/Movement" },
       "description": "Inventory item movements"
     },
-    "/shipments/{shipmentId}": {
+    "/organizations/{orgId}/shipments/{shipmentId}": {
       "schema": { "$ref": "#/entities/Shipment" },
-      "description": "Shipments Collection"
+      "description": "Tenant Shipments Collection"
     },
-    "/suppliers/{supplierId}": {
+    "/organizations/{orgId}/suppliers/{supplierId}": {
       "schema": { "$ref": "#/entities/Supplier" },
-      "description": "Suppliers Collection"
+      "description": "Tenant Suppliers Collection"
     },
-    "/settings/{settingsId}": {
+    "/organizations/{orgId}/settings/{settingsId}": {
       "schema": { "$ref": "#/entities/Settings" },
-      "description": "Global Settings Collection"
+      "description": "Tenant Settings Collection"
+    },
+    "/users/{uid}": {
+      "schema": "object",
+      "description": "User profiles including orgId and role"
     }
   }
 }

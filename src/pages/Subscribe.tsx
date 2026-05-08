@@ -99,8 +99,8 @@ export function Subscribe() {
         
         {/* Header Steps */}
         <div className="bg-[hsl(var(--muted))] p-6 border-b border-[hsl(var(--border))]">
-          <h2 className="text-2xl font-bold mb-2">Assinar Premium Max</h2>
-          <p className="text-[hsl(var(--muted-foreground))]">Comece a usar o ALTEC agora. R$10,00/mês.</p>
+          <h2 className="text-2xl font-bold mb-2">Assinar Almox pro</h2>
+          <p className="text-[hsl(var(--muted-foreground))]">Comece a usar agora por apenas R$ 10,00 mensais.</p>
         </div>
 
         {error && (
@@ -242,34 +242,39 @@ export function Subscribe() {
               
               {formData.paymentMethod === 'PIX' && (
                 <div className="max-w-sm mx-auto space-y-4">
-                  <p className="text-[hsl(var(--muted-foreground))]">Sua cobrança via PIX foi gerada com sucesso.</p>
+                  <p className="text-[hsl(var(--muted-foreground))]">Realize o pagamento de **R$ 10,00** para ativar sua conta.</p>
                   
-                  {result?.encodedImage || result?.pixQrCode ? (
-                    <div className="flex flex-col items-center space-y-4 p-4 border border-[hsl(var(--border))] rounded-xl bg-white text-black">
-                      <img 
-                        src={result.encodedImage ? `data:image/jpeg;base64,${result.encodedImage}` : `data:image/png;base64,${result.pixQrCode.encodedImage}`} 
-                        alt="QR Code PIX" 
-                        className="w-48 h-48"
-                      />
-                      <div className="w-full relative">
-                        <textarea 
-                          readOnly 
-                          value={result.payload || result.pixQrCode?.payload || ''} 
-                          className="w-full text-xs font-mono p-2 bg-gray-100 rounded border border-gray-200 resize-none h-16 outline-none"
-                        />
-                      </div>
-                      <p className="text-xs font-medium text-center">Escaneie o QR Code ou copie a chave Pix Copia e Cola acima.</p>
+                  <div className="flex flex-col items-center space-y-6 p-6 border border-[hsl(var(--border))] rounded-xl bg-[hsl(var(--muted))]/30">
+                    <div className="w-full space-y-2">
+                       <label className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] text-left block">Chave PIX (Celular)</label>
+                       <div className="flex items-center gap-2 p-3 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-lg">
+                          <span className="font-mono text-lg font-bold flex-1 text-left">91986181270</span>
+                          <Button 
+                            size="sm" 
+                            variant="secondary" 
+                            className="h-8 text-xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText("91986181270");
+                            }}
+                          >
+                             Copiar
+                          </Button>
+                       </div>
                     </div>
-                  ) : null}
 
-                  {result?.invoiceUrl && (
-                    <div className="pt-2">
-                       <a href={result.invoiceUrl} target="_blank" rel="noreferrer" className="w-full inline-block bg-[hsl(var(--primary))] text-primary-foreground hover:bg-primary/90 transition-colors py-3 rounded-md font-semibold text-center shadow-sm">
-                         Abrir link de Pagamento
-                       </a>
+                    <div className="w-full space-y-1 py-1 border-t border-b border-[hsl(var(--border))]">
+                      <p className="text-sm text-[hsl(var(--muted-foreground))]">Valor a pagar:</p>
+                      <p className="text-2xl font-black text-[hsl(var(--primary))]">R$ 10,00</p>
                     </div>
-                  )}
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-4">O acesso será liberado automaticamente após a confirmação do pagamento.</p>
+
+                    <div className="w-full text-left p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                       <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium leading-tight">
+                         Após o pagamento, seu acesso será liberado. Guarde o comprovante de transferência.
+                       </p>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-4">O sistema verifica automaticamente os pagamentos recebidos.</p>
                 </div>
               )}
 
@@ -291,7 +296,7 @@ export function Subscribe() {
               )}
 
               <div className="pt-8 mb-4">
-                <Button variant="outline" className="w-full max-w-sm" onClick={() => navigate('/app/inventory')}>
+                <Button variant="outline" className="w-full max-w-sm" onClick={() => navigate('/app/dashboard')}>
                   Ir para o App (Verifica Acesso)
                 </Button>
               </div>

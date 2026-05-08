@@ -6,6 +6,9 @@ import { useSubscription } from "./useSubscription";
  */
 export function useOrganization() {
   const { orgId, loading, role, isMaster } = useSubscription();
+  
+  // Se for master e não tiver orgId (bypass), usamos um padrão para visualização
+  const effectiveOrgId = (isMaster && !orgId) ? "demo-org" : orgId;
 
-  return { orgId, loading, role, isMaster };
+  return { orgId: effectiveOrgId, loading, role, isMaster, realOrgId: orgId };
 }

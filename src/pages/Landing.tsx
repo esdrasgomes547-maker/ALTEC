@@ -8,15 +8,8 @@ import { auth, signInWithGoogle } from '../lib/firebase';
 export function Landing() {
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
-    try {
-      if (!auth.currentUser) {
-        await signInWithGoogle();
-      }
-      navigate('/app/inventory');
-    } catch (error) {
-      console.error("Login failed", error);
-    }
+  const handleLogin = () => {
+    navigate('/login');
   };
 
   return (
@@ -48,14 +41,14 @@ export function Landing() {
         </p>
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg" onClick={() => navigate('/subscribe')}>
-            Começar agora — R$10/mês
+          <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg" onClick={handleLogin}>
+            Começar agora
           </Button>
           <Button variant="outline" size="lg" className="w-full sm:w-auto h-14 px-8 text-lg" onClick={handleLogin}>
             Ver demonstração
           </Button>
         </div>
-        <p className="text-sm text-[hsl(var(--muted-foreground))] mt-4">💳 Pix · Cartão · Boleto</p>
+        <p className="text-sm text-[hsl(var(--muted-foreground))] mt-4">Plataforma Segura · Google Cloud · Realtime DB</p>
       </section>
 
       {/* Problemas */}
@@ -119,35 +112,16 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* CTA Final */}
       <section className="py-24 bg-[hsl(var(--card))] border-y border-[hsl(var(--border))]">
         <div className="container mx-auto px-4 max-w-4xl text-center">
-          <h2 className="text-3xl font-bold mb-10">Preço simples e transparente</h2>
-          
-          <div className="bg-[hsl(var(--background))] border-2 border-[hsl(var(--primary))] rounded-3xl p-8 max-w-lg mx-auto shadow-2xl relative">
-            <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/2">
-              <span className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-xs font-bold px-3 py-1 uppercase tracking-wider rounded-full">Popular</span>
-            </div>
-            
-            <h3 className="text-2xl font-bold mb-2">Premium Max</h3>
-            <p className="text-[hsl(var(--muted-foreground))] mb-6">Acesso total ao app de ponta-a-ponta.</p>
-            
-            <div className="mb-8">
-              <span className="text-5xl font-extrabold">R$10</span>
-              <span className="text-[hsl(var(--muted-foreground))]">/mês</span>
-            </div>
-            
-            <ul className="text-left space-y-4 mb-8">
-              <li className="flex items-center"><ShieldCheck className="h-5 w-5 text-green-500 mr-3" /> Acesso ilimitado ao estoque</li>
-              <li className="flex items-center"><ShieldCheck className="h-5 w-5 text-green-500 mr-3" /> Usuários na mesma organização</li>
-              <li className="flex items-center"><ShieldCheck className="h-5 w-5 text-green-500 mr-3" /> Relatórios diários e alertas</li>
-              <li className="flex items-center"><ShieldCheck className="h-5 w-5 text-green-500 mr-3" /> Suporte VIP</li>
-            </ul>
-            
-            <Button size="lg" className="w-full h-14" onClick={() => navigate('/subscribe')}>
-              Assinar agora
-            </Button>
-          </div>
+          <h2 className="text-4xl font-bold mb-6">Pronto para assumir o controle?</h2>
+          <p className="text-xl text-[hsl(var(--muted-foreground))] mb-10">
+            Simplifique sua gestão logística agora mesmo.
+          </p>
+          <Button size="lg" className="h-14 px-12 text-lg" onClick={handleLogin}>
+            Acessar o Painel
+          </Button>
         </div>
       </section>
 
@@ -160,12 +134,12 @@ export function Landing() {
 
         <div className="space-y-8">
           <div>
-            <h3 className="text-xl font-bold mb-2">O que está incluso na assinatura?</h3>
-            <p className="text-[hsl(var(--muted-foreground))]">Você tem acesso ao gerenciamento de estoque, expedição, base de fornecedores e painéis de indicadores (KPIs). Ideal para manter sua operação sob controle.</p>
+            <h3 className="text-xl font-bold mb-2">Como faço para acessar?</h3>
+            <p className="text-[hsl(var(--muted-foreground))]">O acesso é restrito via login. Você pode entrar com sua conta Google ou os dados fornecidos pelo administrador master.</p>
           </div>
           <div>
-            <h3 className="text-xl font-bold mb-2">Posso cancelar a qualquer momento?</h3>
-            <p className="text-[hsl(var(--muted-foreground))]">Sim, não há contrato de fidelidade. Você pode cancelar sua assinatura a qualquer momento e continuará tendo acesso até o fim do período já pago.</p>
+            <h3 className="text-xl font-bold mb-2">Preciso pagar mensalidade?</h3>
+            <p className="text-[hsl(var(--muted-foreground))]">A plataforma opera em modelo direto. Fale com seu administrador para autorização de acesso ao painel completo.</p>
           </div>
           <div>
             <h3 className="text-xl font-bold mb-2">Como adiciono novos funcionários?</h3>
@@ -184,7 +158,7 @@ export function Landing() {
           <div className="w-6 h-6 grayscale opacity-80"><TecgasLogo /></div>
           <span className="font-bold text-lg uppercase">Almox pro</span>
         </div>
-        <p>&copy; 2025 Almox pro SaaS. Todos os direitos reservados.</p>
+        <p>&copy; 2026 Almox pro. Todos os direitos reservados.</p>
       </footer>
 
     </div>

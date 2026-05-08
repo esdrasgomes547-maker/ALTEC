@@ -2,58 +2,53 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Funções auxiliares
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function isMaster() {
+    // helpers
+    function isSignedIn() { return request.auth != null; }
+    function isMaster() { 
       return isSignedIn() && (
         request.auth.token.email == 'esdrasgomes547@gmail.com' ||
         exists(/databases/$(database)/documents/masters/$(request.auth.token.email))
       );
     }
     
-    function isPremiumMax() {
-      // Para simulação frontend: assumimos que premium_max está no documento do usuário
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'premium_max'
-      );
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
     function isOrgMember(orgId) {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId == orgId
-      );
+      return isSignedIn() && getUserData().orgId == orgId;
     }
-    
-    // Default Deny
+
+    function isPremium() {
+      return isSignedIn() && getUserData().role == 'premium_max';
+    }
+
+    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    match /masters/{emailId} {
-      allow read, write: if isMaster();
-    }
-
-    match /organizations/{orgId} {
-      allow read, write: if isMaster() || (isPremiumMax() && isOrgMember(orgId));
-    }
-    
-    // Permissões por Coleção
-    match /organizations/{orgId}/{document=**} {
-      allow read, write: if isMaster() || (isPremiumMax() && isOrgMember(orgId));
-    }
-    
     match /users/{uid} {
       allow read, write: if isMaster() || (isSignedIn() && request.auth.uid == uid);
     }
-    
-    match /subscriptions/{orgId} {
+
+    match /masters/{email} {
+      allow read: if isMaster();
+    }
+
+    match /organizations/{orgId} {
       allow read: if isMaster() || isOrgMember(orgId);
-      allow write: if isMaster() || isOrgMember(orgId); // Permite ao próprio usuário simular ativação via checkout frontend
+      allow write: if isMaster() || (isOrgMember(orgId) && isPremium());
+    }
+
+    match /organizations/{orgId}/{collection}/{docId} {
+      allow read: if isMaster() || isOrgMember(orgId) || orgId == 'demo-org';
+      allow write: if isMaster() || (isOrgMember(orgId) && isPremium()) || orgId == 'demo-org';
+    }
+
+    match /organizations/{orgId}/{collection}/{docId}/{subCol}/{subDocId} {
+      allow read: if isMaster() || isOrgMember(orgId) || orgId == 'demo-org';
+      allow write: if isMaster() || (isOrgMember(orgId) && isPremium()) || orgId == 'demo-org';
     }
   }
 }

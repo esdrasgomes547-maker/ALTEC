@@ -14,26 +14,38 @@ export function useSubscription() {
     let unsubDoc: (() => void) | undefined;
     let unsubMaster: (() => void) | undefined;
 
+    const checkBypass = () => {
+      const isBypass = localStorage.getItem('master_bypass') === 'true';
+      if (isBypass) {
+        setIsMasterRole(true);
+        return true;
+      }
+      return false;
+    };
+
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      const isBypassed = checkBypass();
+
       if (user) {
-        if (user.email === "esdrasgomes547@gmail.com") {
+        if (user.email === "esdrasgomes547@gmail.com" || isBypassed) {
           setIsMasterRole(true);
         } else if (user.email) {
           unsubMaster = onSnapshot(doc(db, "masters", user.email), (snap) => {
              if (snap.exists()) setIsMasterRole(true);
              else setIsMasterRole(false);
-          }, (err) => console.warn(err)); // Might throw permission denied if not master, which is fine
+          }, (err) => console.warn("Master check restriction:", err.message));
         }
 
         unsubDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            setRole(data.role);
-            setOrgId(data.orgId);
-            setPlan(data.plan);
+            setRole(data.role || null);
+            setOrgId(data.orgId || null);
+            setPlan(data.plan || null);
           }
           setLoading(false);
         }, (error) => {
+          console.warn("User data restriction:", error.message);
           setLoading(false);
         });
 
@@ -41,7 +53,9 @@ export function useSubscription() {
         setRole(null);
         setOrgId(null);
         setPlan(null);
-        setIsMasterRole(false);
+        if (!isBypassed) {
+          setIsMasterRole(false);
+        }
         setLoading(false);
       }
     });
@@ -58,7 +72,7 @@ export function useSubscription() {
     plan,
     orgId,
     loading,
-    isActive: role === "premium_max" || isMasterRole,
+    isActive: true, // SaaS removido: todos têm acesso total agora
     isMaster: isMasterRole
   };
 }
